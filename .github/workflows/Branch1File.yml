@@ -1,0 +1,40 @@
+name: gha-result
+on:
+  workflow_dispatch:
+  push:
+    branches:
+    - branch-1
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    container: node:21-bullseye
+    services:
+      redis:
+        image: redis
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 6379:6379
+    steps:
+    - name: checkout
+      uses: actions/checkout@v3.5.0
+    - name: Set up cache
+      uses: actions/cache@v3.3.1
+      with:
+        path: "${{ github.workspace }}/.m2/repository"
+        key: "${{ runner.os }}-path"
+    - uses: actions/setup-java@v3.12.0
+      with:
+        distribution: zulu
+        java-version: '8'
+    - run: chmod +x mvnw
+    - run: ./mvnw test
+      env:
+          REDIS_HOST: localhost
+          REDIS_PORT: 6379
+#     # 'sudo' was not transformed because there is no suitable equivalent in GitHub Actions
+    - run: bash <(curl -s https://codecov.io/bash)
+      if: "${{ success() }}"
