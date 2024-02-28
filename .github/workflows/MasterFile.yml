@@ -1,0 +1,43 @@
+on:
+  push:
+    branches:
+      master
+
+jobs:
+  build:
+    runs-on:  ubuntu-latest
+    container: node:16-bullseye
+    services:
+      redis:
+        image: redis
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    steps:
+    - uses: actions/checkout@v3
+    - name: Set up Java
+      uses: actions/setup-java@v3
+      with:
+        java-version: '8'
+        distribution: 'temurin'
+    - name: Make the Maven Wrapper Executable
+      run: chmod +x ./mvnw
+      env:
+        REDIS_HOST: redis
+        REDIS_PORT: 6379
+    - name: Use the Maven Wrapper to Test
+      run: ./mvnw test
+      env:
+        REDIS_HOST: redis
+        REDIS_PORT: 6379
+    - name: Curl Code
+      if: ${{ success() }}
+      run: bash <(curl -s https://codecov.io/bash)
+    - name: Cache .m2/repository
+      uses: actions/cache@v3
+      with:
+          key: ${{ runner.os }}-m2-repository
+          path: $HOME/.m2/repository
+      
