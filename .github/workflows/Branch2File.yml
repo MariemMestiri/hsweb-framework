@@ -1,1 +1,47 @@
+name: hsweb-framework:branch-2
+
+on:
+  push:
+    branches:
+    - branch-2
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        jdk: [8]
+        java-distribution: [zulu]
+    container: node:10.18-jessie
+    services:
+      redis:
+        image: redis
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 6379:6379
+    steps:
+      - uses: actions/checkout@v3
+      - name: Set Up JDK
+        uses: actions/setup-java@v3
+        with:
+          java-version: ${{ matrix.jdk }}
+          distribution: ${{ matrix.java-distribution }}
+      - uses: actions/cache@v3
+        with:
+          path: $HOME/.m2/repository
+          key: ${{ runner.os }}-m2-repository
+        env:
+          REDIS_HOST: redis
+          REDIS_PORT: 6379
+      - env:
+          REDIS_HOST: redis
+          REDIS_PORT: 6379
+        run: |
+          chmod +x mvnw
+          ./mvnw test
+          bash <(curl -s https://codecov.io/bash)
 
